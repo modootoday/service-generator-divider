@@ -8,18 +8,29 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <title>모두의오늘 서비스 - 구분선 만들기</title>
     <style>
+      html, body {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
       .fs-7 { font-size: 0.8rem; }
       .fs-8 { font-size: 0.6rem; }
 
       #container.disabled { pointer-events: none; opacity: 0.5; }
       form.gist .show-gist { display: inline-block !important; }
       form.blob .show-blob { display: inline-block !important; }
+      .canvas { cursor: pointer; }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.1/css/bootstrap.min.css" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.1/js/bootstrap.min.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.7.2/bluebird.min.js" referrerpolicy="no-referrer"></script>
     <script src="https://gliffy.github.io/canvas2svg/canvas2svg.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" referrerpolicy="no-referrer"></script>
   </head>
   <body class="bg-dark text-light">
     <div id="container" class="container shadow rounded my-5 disabled">
@@ -104,8 +115,7 @@
           return _.mapValues(data, (file) => {
             const regex = /https\:\/\/gist\.githubusercontent\.com\/(?<gist_user>[^\/]+)\/(?<gist_id>[^\/]+)\/raw\/(?<gist_version>[^\/]+)\/(?<filename>[^\/]+)/;
             const match = regex.exec(file.raw_url), { groups } = match, { gist_user, gist_id, gist_version, filename } = groups;
-            const tz = Date.now();
-            file.raw_url = `https://gist.githubusercontent.com/${gist_user}/${gist_id}/raw/${filename}?_=${tz}`;
+            file.url = `https://gist.githubusercontent.com/${gist_user}/${gist_id}/raw/${filename}`;
             return file;
           })
         } catch(e) {
@@ -117,7 +127,7 @@
             const byteArray = new Uint8Array(hex.match(/.{2}/g).map(e => parseInt(e, 16)));
             const blob = new Blob([svg], {type: "image/svg+xml"});
             const raw_url = URL.createObjectURL(blob) || `data:image/svg+xml;base64,${hex}`;
-            return (file.raw_url = raw_url, file);
+            return (file.raw_url = file.url = raw_url, file);
           });
         }
       }
@@ -170,15 +180,6 @@
         };
         return files;
       }
-      async function update_image({ element, content }) {
-        const canvas = document.querySelector(element); if(!canvas) return;
-        const svg = content;
-        const hex = btoa(unescape(encodeURIComponent(svg)));
-        const byteArray = new Uint8Array(hex.match(/.{2}/g).map(e => parseInt(e, 16)));
-        const blob = new Blob([svg], {type: "image/svg+xml"});
-        const url = URL.createObjectURL(blob) || `data:image/svg+xml;base64,${hex}`;
-        canvas.src = url;
-      }
       async function update_fonts(form) {
         const fonts = [];
         // Default fonts
@@ -223,20 +224,35 @@
           form.gist_auth.oninput = () => localStorage.setItem('gist_auth', form.gist_auth.value);
           form.gist_auth.value = localStorage.getItem('gist_auth') || '';
           form.text.oninput = () => localStorage.setItem('text', form.text.value);
-          form.text.value = localStorage.getItem('text') || form.text.dataset.value || '';
+          form.text.value = localStorage.getItem('text') || form.text.dataset.value;
           form.fontFamily.onchange = () => localStorage.setItem('fontFamily', form.fontFamily.value);
-          form.fontFamily.value = localStorage.getItem('fontFamily') || form.fontFamily.dataset.value || '';
+          form.fontFamily.value = localStorage.getItem('fontFamily') || form.fontFamily.dataset.value;
           form.fontSize.onchange = () => localStorage.setItem('fontSize', form.fontSize.value);
-          form.fontSize.value = localStorage.getItem('fontSize') || form.fontSize.dataset.value || '';
+          form.fontSize.value = localStorage.getItem('fontSize') || form.fontSize.dataset.value;
           form.onsubmit = async (e) => {
             view.classList.toggle('disabled', true);
             if(e && e.preventDefault) e.preventDefault();
             const files = await create_images(form);
             const remote_files = await github_update_gist(form, files);
             for(let k in remote_files) {
-              const file = remote_files[k], { filename, raw_url } = file;
+              const file = remote_files[k], { filename, raw_url, url } = file;
               const canvas = Array.from(document.querySelectorAll('img.canvas[data-filename]')).find(el=>el.dataset.filename==filename);
-              if(canvas) { canvas.src = raw_url }
+              if(canvas) {
+                canvas.src = raw_url;
+                canvas.dataset.src = raw_url;
+                canvas.dataset.url = url;
+                canvas.onclick = () => {
+                  const gist = form.classList.contains('gist');
+                  if(!gist) {
+                    return saveAs(canvas.dataset.src, canvas.dataset.filename);
+                  } else {
+                    const blob = new Blob([`<img src="${canvas.dataset.url}?_=${Date.now()}">`], {type: 'text/html'});
+                    const data = new ClipboardItem({'text/html' : blob});
+                    navigator.clipboard.write([data]);
+                    alert('이미지가 복사되었습니다. 원하는 곳에 붙여넣기 해주세요.');
+                  }
+                }
+              }
             }
             view.classList.toggle('disabled', false);
           };
