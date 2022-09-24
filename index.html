@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="always">
+    <meta name="robots" content="noindex,nofollow">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <title>모두의오늘 서비스 - 구분선 만들기</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: #333; }
+      .fs-7 { font-size: 0.8rem; }
+      .fs-8 { font-size: 0.6rem; }
+
+      #container.disabled { pointer-events: none; opacity: 0.5; }
+      form.gist .show-gist { display: inline-block !important; }
+      form.blob .show-blob { display: inline-block !important; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.1/css/bootstrap.min.css" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.1/js/bootstrap.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.7.2/bluebird.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://gliffy.github.io/canvas2svg/canvas2svg.js" referrerpolicy="no-referrer"></script>
+  </head>
+  <body>
+    <div id="container" class="container shadow bg-body rounded my-5 disabled">
+      <div class="p-3">
+        <h1 class="h4 text-center mb-3">Divider Generator</h1>
+        <form id="generator">
+          <div class="card shadow mb-3">
+            <div class="card-header">Output</div>
+            <div class="card-body">
+              <p class="text-center mb-1"><img class="canvas" data-filename="divider-01.svg" /></p>
+              <p class="text-center mb-1"><img class="canvas" data-filename="divider-02.svg" /></p>
+              <p class="text-center mb-1"><img class="canvas" data-filename="divider-03.svg" /></p>
+            </div>
+            <div class="card-footer">
+              <small class="d-none show-blob">이미지를 저장 후, GitHub 등에 업로드 하여 사용하세요.</small>
+              <small class="d-none show-gist">이미지를 복사 후, 온라인 편집기 등에서 붙여넣기하여 사용하세요.</small>
+            </div>
+          </div>
+          <div class="card shadow mb-3">
+            <div class="card-header">구분선 설정</div>
+            <div class="card-body">
+              <input class="mb-1 form-control" type="text" name="text" value="구분선 문구 / 0123 / abcd / ABCD" placeholder="구분선에 들어갈 문구를 입력하세요" />
+              <select class="mb-1 form-select" name="fontFamily"></select>
+              <select class="mb-1 form-select" name="fontSize">
+                <option value="11" selected>11</option>
+                <option value="12">12</option>
+                <option value="16">16</option>
+              </select>
+              <button class="btn btn-primary w-100" type="submit">구분선 만들기</button>
+            </div>
+          </div>
+          <div class="card shadow mb-3">
+            <div class="card-header">Gist 자동 업로드</div>
+            <div class="card-body">
+              <input class="form-control mb-1" type="text" name="gist_id" placeholder="Gist ID" />
+              <ul class="list-group list-group-flush list-group-numbered fs-6">
+                <li class="list-group-item"><span class="badge bg-dark text-light">GitHub Gist</span>로 이동합니다.</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">Filename</span>에 <span class="badge bg-light text-dark">README.md</span>를 입력하고 설명을 추가합니다</li>
+                <li class="list-group-item"><span class="badge bg-success text-light">Create secret gist</span> 버튼을 클릭합니다.</li>
+                <li class="list-group-item">주소 가장 뒷부분의 <span class="badge bg-primary text-light">Gist ID</span>를 복사하여 입력합니다.</li>
+              </ul>
+            </div>
+            <div class="card-body">
+              <input class="form-control mb-1" type="password" name="gist_auth" placeholder="Github Personal access token" />
+              <ul class="list-group list-group-flush list-group-numbered fs-6">
+                <li class="list-group-item"><span class="badge bg-dark text-light">GitHub</span>에 회원가입 및 로그인 합니다</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">Settings</span> 메뉴를 클릭하여 이동합니다.</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">Developer settings</span> 메뉴를 클릭하여 이동합니다.</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">Personal access tokens</span> 메뉴를 클릭하여 이동합니다.</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">Generate new token</span> 버튼을 클릭하여 이동합니다.</li>
+                <li class="list-group-item"><span class="badge bg-dark text-light">gist</span> 항목을 체크하고 <span class="badge bg-success text-light">Generate token</span> 버튼을 클릭합니다.</li>
+                <li class="list-group-item">생성 된 <span class="badge bg-primary text-light">Access token</span>을 복사하여 입력합니다. 단, 유효기간 만료 시 갱신이 필요합니다.</li>
+              </ul>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script type="module">
+      import { Octokit } from "https://cdn.skypack.dev/@octokit/core";
+      const canvas_size = { width: 360, height: 32 };
+      async function github_client(form) { return new Octokit({ auth: form.gist_auth.value }); }
+      async function github_select_gist(form) {
+        const api = await github_client(form);
+        const res = await api.request('GET /gists/{gist_id}', {
+          gist_id: form.gist_id.value,
+        });
+        return res;
+      }
+      async function github_update_gist(form, files) {
+        try {
+          form.classList.remove('gist', 'blob');
+          form.classList.add('gist');
+          const gist = await github_select_gist(form);
+          const api = await github_client(form);
+          const res = await api.request('PATCH /gists/{gist_id}', {
+            gist_id: form.gist_id.value,
+            description: 'An updated gist description',
+            files,
+          });
+          return _.get(res, 'data.files', {});
+        } catch(e) {
+          form.classList.remove('gist', 'blob');
+          form.classList.add('blob');
+          return _.mapValues(files, (file) => {
+            const svg = file.content;
+            const hex = btoa(unescape(encodeURIComponent(svg)));
+            const byteArray = new Uint8Array(hex.match(/.{2}/g).map(e => parseInt(e, 16)));
+            const blob = new Blob([svg], {type: "image/svg+xml"});
+            const raw_url = URL.createObjectURL(blob) || `data:image/svg+xml;base64,${hex}`;
+            return (file.raw_url = raw_url, file);
+          });
+        }
+      }
+      async function create_image(element, align = 'center', font, text) {
+        const canvas = Object.assign({}, canvas_size, element);
+        const ctx = new C2S(canvas);
+        const x = canvas.width / 2;
+        const y = canvas.height / 2;
+        if(['center', 'start'].includes(align)) {
+          ctx.beginPath();
+          ctx.moveTo(10, y);
+          ctx.lineTo(10 + 50, y);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#cccccc";
+          ctx.stroke();
+        }
+        if(['center', 'end'].includes(align)) {
+          ctx.beginPath();
+          ctx.moveTo(canvas.width - 10, y);
+          ctx.lineTo(canvas.width - 10 - 50, y);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#cccccc";
+          ctx.stroke();
+        }
+        ctx.font = font;
+        ctx.fillStyle = "#cccccc";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+        return ctx.getSerializedSvg(true);
+      }
+      async function create_images(form) {
+        const fontSize = form.fontSize.value;
+        const fontFamily = form.fontFamily.value;
+        const font = `${fontSize}px ${fontFamily}`;
+        const text = form.text.value;
+        await document.fonts.load(font);
+        const files = {};
+        files['divider-01.svg'] = {
+          filename: 'divider-01.svg',
+          content: await create_image(canvas_size, 'center', font, text),
+        };
+        files['divider-02.svg'] = {
+          filename: 'divider-02.svg',
+          content: await create_image(canvas_size, 'start', font, text),
+        };
+        files['divider-03.svg'] = {
+          filename: 'divider-03.svg',
+          content: await create_image(canvas_size, 'end', font, text),
+        };
+        return files;
+      }
+      async function update_image({ element, content }) {
+        const canvas = document.querySelector(element); if(!canvas) return;
+        canvas.width = canvas_size.width;
+        canvas.height = canvas_size.height;
+        const svg = content;
+        const hex = btoa(unescape(encodeURIComponent(svg)));
+        const byteArray = new Uint8Array(hex.match(/.{2}/g).map(e => parseInt(e, 16)));
+        const blob = new Blob([svg], {type: "image/svg+xml"});
+        const url = URL.createObjectURL(blob) || `data:image/svg+xml;base64,${hex}`;
+        canvas.src = url;
+      }
+      async function update_fonts(form) {
+        const fonts = [];
+        // Default fonts
+        fonts.push({
+          group: "Default",
+          items: ["sans-serif", "sans-serif-black", "sans-serif-condensed", "sans-serif-condensed-light", "sans-serif-light", "sans-serif-medium", "sans-serif-smallcaps", "sans-serif-thin", "serif", "serif-monospace", "casual", "cursive", "monospace"],
+        });
+        // Noto Fonts
+        fonts.push({
+          group: "Noto",
+          items: ["Noto Mono","Noto Color Emoji","Noto Emoji","Noto Kufi Arabic","Noto Naskh Arabic","Noto Nastaliq Urdu","Noto Sans","Noto Sans Adlam","Noto Sans Adlam Unjoined","Noto Sans Anatolian Hieroglyphs","Noto Sans Armenian","Noto Sans Avestan","Noto Sans Balinese","Noto Sans Bamum","Noto Sans Batak","Noto Sans Bengali","Noto Sans Brahmi","Noto Sans Buginese","Noto Sans Buhid","Noto Sans Canadian Aboriginal","Noto Sans Carian","Noto Sans Chakma","Noto Sans Cham","Noto Sans Cherokee","Noto Sans CJK JP","Noto Sans CJK KR","Noto Sans CJK SC","Noto Sans CJK TC","Noto Sans Coptic","Noto Sans Cuneiform","Noto Sans Cypriot","Noto Sans Deseret","Noto Sans Devanagari","Noto Sans Display","Noto Sans Egyptian Hieroglyphs","Noto Sans Ethiopic","Noto Sans Georgian","Noto Sans Glagolitic","Noto Sans Gothic","Noto Sans Gujarati","Noto Sans Gurmukhi","Noto Sans Hanunoo","Noto Sans Hebrew","Noto Sans Imperial Aramaic","Noto Sans Inscriptional Pahlavi","Noto Sans Inscriptional Parthian","Noto Sans Javanese","Noto Sans Kaithi","Noto Sans Kannada","Noto Sans Kayah Li","Noto Sans Kharoshthi","Noto Sans Khmer","Noto Sans Lao","Noto Sans Lepcha","Noto Sans Limbu","Noto Sans Linear B","Noto Sans Lisu","Noto Sans Lycian","Noto Sans Lydian","Noto Sans Malayalam","Noto Sans Mandaic","Noto Sans Meetei Mayek","Noto Sans Mongolian","Noto Sans Mono","Noto Sans Mono CJK JP","Noto Sans Mono CJK KR","Noto Sans Mono CJK SC","Noto Sans Mono CJK TC","Noto Sans Myanmar","Noto Sans Nabataean","Noto Sans New Tai Lue","Noto Sans NKo","Noto Sans Ogham","Noto Sans Ol Chiki","Noto Sans Old Italic","Noto Sans Old North Arabian","Noto Sans Old Persian","Noto Sans Old South Arabian","Noto Sans Old Turkic","Noto Sans Oriya","Noto Sans Osage","Noto Sans Osmanya","Noto Sans Phags Pa","Noto Sans Phoenician","Noto Sans Rejang","Noto Sans Runic","Noto Sans Samaritan","Noto Sans Saurashtra","Noto Sans Shavian","Noto Sans Sinhala","Noto Sans Sundanese","Noto Sans Syloti Nagri","Noto Sans Symbols","Noto Sans Syriac Eastern","Noto Sans Syriac Estrangela","Noto Sans Syriac Western","Noto Sans Tagalog","Noto Sans Tagbanwa","Noto Sans Tai Le","Noto Sans Tai Tham","Noto Sans Tai Viet","Noto Sans Tamil","Noto Sans Telugu","Noto Sans Thaana","Noto Sans Thai","Noto Sans Tibetan","Noto Sans Tifinagh","Noto Sans Ugaritic","Noto Sans Vai","Noto Sans Yi","Noto Serif","Noto Serif Ahom","Noto Serif Armenian","Noto Serif Bengali","Noto Serif CJK JP","Noto Serif CJK KR","Noto Serif CJK SC","Noto Serif CJK TC","Noto Serif Devanagari","Noto Serif Display","Noto Serif Georgian","Noto Serif Gujarati","Noto Serif Kannada","Noto Serif Khmer","Noto Serif Lao","Noto Serif Malayalam","Noto Serif Tamil","Noto Serif Telugu","Noto Serif Thai"]
+        });
+        // Windows Default Fonts
+        fonts.push({
+          group: "Windows Korean",
+          items: ["Batang","Dotum","Gulim","Gungsuh"]
+        });
+        fonts.push({
+          group: "Windows",
+          items: ["Arial","Arial Black","Bahnschrift","Calibri","Cambria","Cambria Math","Candara","Comic Sans MS","Consolas","Constantia","Corbel","Courier New","Ebrima","Franklin Gothic Medium","Gabriola","Gadugi","Georgia","HoloLens MDL2 Assets","Impact","Ink Free","Javanese Text","Leelawadee UI","Lucida Console","Lucida Sans Unicode","Malgun Gothic","Marlett","Microsoft Himalaya","Microsoft JhengHei","Microsoft New Tai Lue","Microsoft PhagsPa","Microsoft Sans Serif","Microsoft Tai Le","Microsoft YaHei","Microsoft Yi Baiti","MingLiUExtB","Mongolian Baiti","MS Gothic","MV Boli","Myanmar Text","Nirmala UI","Palatino Linotype","Segoe MDL2 Assets","Segoe Print","Segoe Script","Segoe UI","Segoe UI Historic","Segoe UI Emoji","Segoe UI Symbol","SimSun","Sitka","Sylfaen","Symbol","Tahoma","Times New Roman","Trebuchet MS","Verdana","Webdings","Wingdings","Yu Gothic"]
+        });
+        await Promise.map(fonts, async ({ group, items })=>{
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = group;
+          await Promise.map(items, (fontFamily) => {
+            const check = document.fonts.check(`12px ${fontFamily}`); if(!check) return;
+            const option = document.createElement('option');
+            option.value = option.textContent = fontFamily;
+            optgroup.append(option);
+          })
+          form.fontFamily.append(optgroup); 
+        });
+      }
+      async function main() {
+        try {
+          const view = document.querySelector('#container'); if(!view) return;
+          const form = document.querySelector('#generator'); if(!form) return;
+          view.classList.toggle('disabled', true);
+          await update_fonts(form);
+          form.gist_id.oninput = () => localStorage.setItem('gist_id', form.gist_id.value);
+          form.gist_id.value = localStorage.getItem('gist_id');
+          form.gist_auth.oninput = () => localStorage.setItem('gist_auth', form.gist_auth.value);
+          form.gist_auth.value = localStorage.getItem('gist_auth');
+          form.onsubmit = async (e) => {
+            view.classList.toggle('disabled', true);
+            if(e && e.preventDefault) e.preventDefault();
+            const files = await create_images(form);
+            const remote_files = await github_update_gist(form, files);
+            for(let k in remote_files) {
+              const file = remote_files[k], { filename, raw_url } = file;
+              const canvas = Array.from(document.querySelectorAll('img.canvas[data-filename]')).find(el=>el.dataset.filename==filename);
+              if(canvas) { canvas.src = raw_url }
+            }
+            view.classList.toggle('disabled', false);
+          };
+          await form.onsubmit();
+        }catch(e) {
+          console.error(e);
+        }
+      }
+      main();
+    </script>
+  </body>
+</html>
