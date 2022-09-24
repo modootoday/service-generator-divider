@@ -222,11 +222,11 @@
           form.gist_auth.oninput = () => localStorage.setItem('gist_auth', form.gist_auth.value);
           form.gist_auth.value = localStorage.getItem('gist_auth') || '';
           form.text.oninput = () => localStorage.setItem('text', form.text.value);
-          form.text.value = localStorage.getItem('text') || form.text.dataset.value;
+          form.text.value = localStorage.getItem('text') || form.text.dataset.value || '';
           form.fontFamily.onchange = () => localStorage.setItem('fontFamily', form.fontFamily.value);
-          form.fontFamily.value = localStorage.getItem('fontFamily') || form.fontFamily.dataset.value;
+          form.fontFamily.value = localStorage.getItem('fontFamily') || form.fontFamily.dataset.value || '';
           form.fontSize.onchange = () => localStorage.setItem('fontSize', form.fontSize.value);
-          form.fontSize.value = localStorage.getItem('fontSize') || form.fontSize.dataset.value;
+          form.fontSize.value = localStorage.getItem('fontSize') || form.fontSize.dataset.value || '';
           form.onsubmit = async (e) => {
             view.classList.toggle('disabled', true);
             if(e && e.preventDefault) e.preventDefault();
