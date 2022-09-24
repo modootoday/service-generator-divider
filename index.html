@@ -29,9 +29,9 @@
           <div class="card bg-light text-dark shadow mb-3">
             <div class="card-header">Output</div>
             <div class="card-body">
-              <p class="text-center mb-1"><img class="canvas" data-filename="divider-01.svg" /></p>
-              <p class="text-center mb-1"><img class="canvas" data-filename="divider-02.svg" /></p>
-              <p class="text-center mb-1"><img class="canvas" data-filename="divider-03.svg" /></p>
+              <p class="text-center mb-1"><img class="canvas" width="100%" data-filename="divider-01.svg" /></p>
+              <p class="text-center mb-1"><img class="canvas" width="100%" data-filename="divider-02.svg" /></p>
+              <p class="text-center mb-1"><img class="canvas" width="100%" data-filename="divider-03.svg" /></p>
             </div>
             <div class="card-footer">
               <small class="d-none show-blob">이미지를 저장 후, GitHub 등에 업로드 하여 사용하세요.</small>
@@ -171,8 +171,6 @@
       }
       async function update_image({ element, content }) {
         const canvas = document.querySelector(element); if(!canvas) return;
-        canvas.width = canvas_size.width;
-        canvas.height = canvas_size.height;
         const svg = content;
         const hex = btoa(unescape(encodeURIComponent(svg)));
         const byteArray = new Uint8Array(hex.match(/.{2}/g).map(e => parseInt(e, 16)));
