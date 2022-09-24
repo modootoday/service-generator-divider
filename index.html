@@ -104,7 +104,8 @@
           return _.mapValues(data, (file) => {
             const regex = /https\:\/\/gist\.githubusercontent\.com\/(?<gist_user>[^\/]+)\/(?<gist_id>[^\/]+)\/raw\/(?<gist_version>[^\/]+)\/(?<filename>[^\/]+)/;
             const match = regex.exec(file.raw_url), { groups } = match, { gist_user, gist_id, gist_version, filename } = groups;
-            file.raw_url = `https://gist.githubusercontent.com/${gist_user}/${gist_id}/raw/${filename}`;
+            const tz = Date.now();
+            file.raw_url = `https://gist.githubusercontent.com/${gist_user}/${gist_id}/raw/${filename}?_=${tz}`;
             return file;
           })
         } catch(e) {
