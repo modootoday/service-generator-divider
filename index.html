@@ -100,7 +100,13 @@
             description: 'An updated gist description',
             files,
           });
-          return _.get(res, 'data.files', {});
+          const data = _.get(res, 'data.files', {});
+          return _.mapValues(data, (file) => {
+            const regex = /https\:\/\/gist\.githubusercontent\.com\/(?<gist_user>[^\/]+)\/(?<gist_id>[^\/]+)\/raw\/(?<gist_version>[^\/]+)\/(?<filename>[^\/]+)/;
+            const match = regex.exec(file.raw_url), { groups } = match, { gist_user, gist_id, gist_version, filename } = groups;
+            file.raw_url = `https://gist.githubusercontent.com/${gist_user}/${gist_id}/raw/${filename}`;
+            return file;
+          })
         } catch(e) {
           form.classList.remove('gist', 'blob');
           form.classList.add('blob');
@@ -179,7 +185,7 @@
         // Default fonts
         fonts.push({
           group: "Default",
-          items: ["sans-serif", "sans-serif-black", "sans-serif-condensed", "sans-serif-condensed-light", "sans-serif-light", "sans-serif-medium", "sans-serif-smallcaps", "sans-serif-thin", "serif", "serif-monospace", "casual", "cursive", "monospace"],
+          items: ["sans-serif", "serif", "serif-monospace", "casual", "cursive", "monospace"],
         });
         // Noto Fonts
         fonts.push({
@@ -214,9 +220,9 @@
           view.classList.toggle('disabled', true);
           await update_fonts(form);
           form.gist_id.oninput = () => localStorage.setItem('gist_id', form.gist_id.value);
-          form.gist_id.value = localStorage.getItem('gist_id');
+          form.gist_id.value = localStorage.getItem('gist_id') || '554f92056caf86928af1f9420289b144';
           form.gist_auth.oninput = () => localStorage.setItem('gist_auth', form.gist_auth.value);
-          form.gist_auth.value = localStorage.getItem('gist_auth');
+          form.gist_auth.value = localStorage.getItem('gist_auth') || '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';
           form.onsubmit = async (e) => {
             view.classList.toggle('disabled', true);
             if(e && e.preventDefault) e.preventDefault();
